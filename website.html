@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom Marksheet PDF Generator</title>
+
+<style>
+  body {
+    font-family: 'Poppins', Arial, sans-serif;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    padding: 40px;
+  }
+
+  .card {
+    max-width: 650px;
+    margin: auto;
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    animation: fadein 0.5s ease;
+  }
+
+  @keyframes fadein {
+    from {opacity: 0; transform: translateY(10px);} 
+    to {opacity: 1; transform: translateY(0);} 
+  }
+
+  h2, h3 {
+    text-align: center;
+    color: #333;
+  }
+
+  h2 { font-size: 26px; margin-bottom: 20px; font-weight: 600; }
+  h3 { font-size: 18px; margin-bottom: 10px; }
+
+  input {
+    width: calc(33% - 10px);
+    padding: 10px;
+    margin: 5px;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    margin-top: 15px;
+    background: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  button:hover {
+    background: #0056c7;
+  }
+
+  .subject-row {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  #add-subject {
+    width: auto;
+    padding: 8px 16px;
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Student Marksheet Generator</h2>
+
+  <input id="name" placeholder="Student Name">
+  <input id="roll" placeholder="Roll Number">
+
+  <h3>Enter Marks</h3>
+  <div id="subjects-container">
+    <div class="subject-row">
+      <input class="subject-name" placeholder="Subject Name">
+      <input class="subject-mark" placeholder="Marks Obtained">
+      <input class="subject-max" placeholder="Max Marks">
+    </div>
+  </div>
+  <button type="button" id="add-subject">+ Add Subject</button>
+
+  <button onclick="generatePDF()">Download Marksheet (PDF)</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("add-subject").addEventListener("click", addSubject);
+});
+
+function addSubject() {
+  const container = document.getElementById("subjects-container");
+
+  const div = document.createElement("div");
+  div.classList.add("subject-row");
+
+  const nameInput = document.createElement("input");
+  nameInput.classList.add("subject-name");
+  nameInput.placeholder = "Subject Name";
+
+  const markInput = document.createElement("input");
+  markInput.classList.add("subject-mark");
+  markInput.placeholder = "Marks Obtained";
+
+  const maxInput = document.createElement("input");
+  maxInput.classList.add("subject-max");
+  maxInput.placeholder = "Max Marks";
+
+  div.appendChild(nameInput);
+  div.appendChild(markInput);
+  div.appendChild(maxInput);
+  container.appendChild(div);
+}
+
+function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Student info
+  const name = document.getElementById("name").value.trim();
+  const roll = document.getElementById("roll").value.trim();
+
+  if (!name || !roll) {
+    alert("Please enter Name and Roll Number.");
+    return;
+  }
+
+  // Collect subjects, marks, and max marks dynamically
+  const subjects = [];
+  const marks = [];
+  const maxMarks = [];
+  const rows = document.querySelectorAll(".subject-row");
+  for (let row of rows) {
+    const subjectName = row.querySelector(".subject-name").value.trim();
+    const mark = Number(row.querySelector(".subject-mark").value);
+    const maxMark = Number(row.querySelector(".subject-max").value);
+    if (!subjectName || isNaN(mark) || isNaN(maxMark) || maxMark <= 0) {
+      alert("Please fill all subjects with valid marks and max marks.");
+      return;
+    }
+    subjects.push(subjectName);
+    marks.push(mark);
+    maxMarks.push(maxMark);
+  }
+
+  // Calculations
+  const total = marks.reduce((a, b) => a + b, 0);
+  const maxTotal = maxMarks.reduce((a, b) => a + b, 0);
+  const percentage = (total / maxTotal) * 100;
+
+  const grade = percentage >= 90 ? "A+" :
+                percentage >= 80 ? "A" :
+                percentage >= 70 ? "B" :
+                percentage >= 60 ? "C" :
+                percentage >= 50 ? "D" : "F";
+
+  // PDF Header
+  doc.setFillColor(72,149,239);
+  doc.rect(0, 0, 210, 25, 'F');
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text("STUDENT MARKSHEET", 55, 17);
+
+  // Student Info
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(14);
+  doc.rect(10, 35, 190, 30);
+  doc.text(`Name     : ${name}`, 15, 50);
+  doc.text(`Roll No  : ${roll}`, 120, 50);
+
+  // Table Header
+  doc.setFillColor(230, 230, 230);
+  doc.rect(10, 75, 190, 10, 'F');
+  doc.text("Subject", 20, 82);
+  doc.text("Marks Obtained", 95, 82);
+  doc.text("Max Marks", 160, 82);
+  doc.line(10, 85, 200, 85);
+
+  // Subjects and marks
+  let y = 100;
+  for (let i = 0; i < subjects.length; i++) {
+    doc.text(subjects[i], 20, y);
+    doc.text(String(marks[i]), 110, y);
+    doc.text(String(maxMarks[i]), 165, y);
+    y += 15;
+  }
+
+  // Summary Box
+  doc.rect(10, y + 10, 190, 40);
+  doc.text(`Total Marks : ${total}/${maxTotal}`, 20, y + 25);
+  doc.text(`Percentage  : ${percentage.toFixed(2)}%`, 20, y + 35);
+  doc.text(`Grade       : ${grade}`, 20, y + 45);
+
+  doc.save("marksheet.pdf");
+}
+</script>
+
+</body>
+</html>
